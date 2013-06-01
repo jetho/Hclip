@@ -62,18 +62,16 @@ withCommand :: CommandType -> (IOHandles -> IO a) -> IO (Either String a)
 withCommand commandType action = runErrorT $ do
   cmd <- chooseOSCommand commandType
   liftIO $ bracket (runInteractiveCommand cmd)
-           (\(stdin,stdout,stderr,_) -> mapM_ hClose [stdin,stdout,stderr])
-           (\(stdin,stdout,_,_) -> action (stdin, stdout))
+           (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
+           (\(inp,outp,_,_) -> action (inp, outp))
 
 
 getClipboard :: IO (Either String String)
 getClipboard = withCommand GetClipboard $ hGetContents . stdout
-  --where stdout = snd
 
 
 setClipboard :: String -> IO (Either String ())
 setClipboard text = withCommand SetClipboard $ flip hPutStr text . stdin
-  --where stdin = fst
 
 
 modifyClipboard :: (String -> String) -> IO (Either String ()) 
