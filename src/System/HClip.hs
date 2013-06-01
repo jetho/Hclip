@@ -28,18 +28,20 @@ command "xclip" GetClipboard = "xclip -selection c -o"
 command "xclip" SetClipboard = "xclip -selection c"
 
 
+whichCommand :: String -> IO (Maybe String)
+whichCommand cmd = do 
+  (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] "" 
+  case exitCode of
+    ExitSuccess -> return $ Just cmd
+    ExitFailure _ -> return Nothing
+
+
 getLinuxCommand :: ErrorWithIO String
 getLinuxCommand = do
-  results <- liftIO $ mapM existsCommand ["xsel", "xclip"]
+  results <- liftIO $ mapM whichCommand ["xsel", "xclip"]
   maybe (throwError "HClip requires xclip or xsel installed.")
         return
         (getFirst (mconcat $ map First results))
-  where
-    existsCommand cmd = do 
-      (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] "" 
-      case exitCode of
-        ExitSuccess -> return $ Just cmd
-        ExitFailure _ -> return Nothing
 
 
 chooseOSCommand :: CommandType -> ErrorWithIO String
