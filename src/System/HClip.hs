@@ -53,7 +53,7 @@ getLinuxCommand = do
 chooseOSCommand :: CommandType -> ErrorWithIO String
 chooseOSCommand commandType = 
   case os of 
-    "linux" -> getLinuxCommand >>= return . (flip command commandType)
+    "linux" -> getLinuxCommand >>= return . flip command commandType
     "darwin" -> return (command "darwin" commandType)
     unknownOS -> throwError ("Unsupported OS: " ++ unknownOS)
 
