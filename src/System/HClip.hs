@@ -53,13 +53,11 @@ chooseOSCommand commandType =
 
 
 withCommand :: CommandType -> ((Handle, Handle) -> IO a) -> IO (Either String a)
-withCommand commandType action = runErrorT clipCommand
-  where 
-    clipCommand = do
-      cmd <- chooseOSCommand commandType
-      liftIO $ bracket (runInteractiveCommand cmd)
-               (\(stdin,stdout,stderr,_) -> mapM_ hClose [stdin,stdout,stderr])
-               (\(stdin,stdout,_,_) -> action (stdin, stdout))
+withCommand commandType action = runErrorT $ do
+  cmd <- chooseOSCommand commandType
+  liftIO $ bracket (runInteractiveCommand cmd)
+           (\(stdin,stdout,stderr,_) -> mapM_ hClose [stdin,stdout,stderr])
+           (\(stdin,stdout,_,_) -> action (stdin, stdout))
 
 
 getClipboard :: IO (Either String String)
