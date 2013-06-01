@@ -14,8 +14,14 @@ import Control.Monad.Error
 
 
 type ErrorWithIO = ErrorT String IO
+type IOHandles = (Handle, Handle)
 
 data CommandType = GetClipboard | SetClipboard
+
+
+stdin, stdout :: IOHandles -> Handle
+stdin = fst
+stdout = snd
 
 
 command "darwin" GetClipboard = "pbcopy"
@@ -52,7 +58,7 @@ chooseOSCommand commandType =
     unknownOS -> throwError ("Unsupported OS: " ++ unknownOS)
 
 
-withCommand :: CommandType -> ((Handle, Handle) -> IO a) -> IO (Either String a)
+withCommand :: CommandType -> (IOHandles -> IO a) -> IO (Either String a)
 withCommand commandType action = runErrorT $ do
   cmd <- chooseOSCommand commandType
   liftIO $ bracket (runInteractiveCommand cmd)
@@ -62,12 +68,12 @@ withCommand commandType action = runErrorT $ do
 
 getClipboard :: IO (Either String String)
 getClipboard = withCommand GetClipboard $ hGetContents . stdout
-  where stdout = snd
+  --where stdout = snd
 
 
 setClipboard :: String -> IO (Either String ())
 setClipboard text = withCommand SetClipboard $ flip hPutStr text . stdin
-  where stdin = fst
+  --where stdin = fst
 
 
 modifyClipboard :: (String -> String) -> IO (Either String ()) 
