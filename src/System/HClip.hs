@@ -15,8 +15,9 @@ import Control.Monad.Error
 
 type ErrorWithIO = ErrorT String IO
 type IOHandles = (Handle, Handle)
+type OSType = String
 
-data CommandType = GetClipboard | SetClipboard
+data CommandType = GetClipboard | SetClipboard String
 
 
 stdin, stdout :: IOHandles -> Handle
@@ -24,14 +25,14 @@ stdin = fst
 stdout = snd
 
 
-command "darwin" GetClipboard = "pbcopy"
-command "darwin" SetClipboard = "pbpaste"
+externalCommand "darwin" GetClipboard = "pbcopy"
+externalCommand "darwin" (SetClipboard _) = "pbpaste"
 
-command "xsel" GetClipboard = "xsel -o"
-command "xsel" SetClipboard = "xsel -i"
+externalCommand "xsel" GetClipboard = "xsel -o"
+externalCommand "xsel" (SetClipboard _) = "xsel -i"
 
-command "xclip" GetClipboard = "xclip -selection c -o"
-command "xclip" SetClipboard = "xclip -selection c"
+externalCommand "xclip" GetClipboard = "xclip -selection c -o"
+externalCommand "xclip" (SetClipboard _) = "xclip -selection c"
 
 
 whichCommand :: String -> IO (Maybe String)
@@ -50,30 +51,42 @@ getLinuxCommand = do
         (getFirst (mconcat $ map First results))
 
 
-chooseOSCommand :: CommandType -> ErrorWithIO String
-chooseOSCommand commandType = 
-  case os of 
-    "linux" -> getLinuxCommand >>= return . flip command commandType
-    "darwin" -> return (command "darwin" commandType)
-    unknownOS -> throwError ("Unsupported OS: " ++ unknownOS)
+getExternalCommand :: OSType -> CommandType -> ErrorWithIO String
+getExternalCommand "linux" commandType = getLinuxCommand >>= return . flip externalCommand commandType
+getExternalCommand "darwin" commandType = return $ externalCommand "darwin" commandType
+getExternalCommand unknownOS _ = throwError ("Unsupported OS: " ++ unknownOS)
 
 
-withCommand :: CommandType -> (IOHandles -> IO a) -> IO (Either String a)
-withCommand commandType action = runErrorT $ do
-  cmd <- chooseOSCommand commandType
+withExternalCommand :: OSType -> CommandType -> (IOHandles -> IO String) -> IO (Either String String)
+withExternalCommand osType commandType action = runErrorT $ do
+  cmd <- getExternalCommand osType commandType
   liftIO $ bracket (runInteractiveCommand cmd)
            (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
            (\(inp,outp,_,_) -> action (inp, outp))
 
 
+winCommand GetClipboard = undefined
+winCommand (SetClipboard _) = undefined
+
+
+execCommand :: CommandType -> IO (Either String String)
+execCommand command = 
+  case os of
+    "windows" -> winCommand command
+    osType -> withExternalCommand osType command (createAction command)
+  where
+    createAction GetClipboard = hGetContents . stdout
+    createAction (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
+
+
 getClipboard :: IO (Either String String)
-getClipboard = withCommand GetClipboard $ hGetContents . stdout
+getClipboard = execCommand GetClipboard
 
 
-setClipboard :: String -> IO (Either String ())
-setClipboard text = withCommand SetClipboard $ flip hPutStr text . stdin
+setClipboard :: String -> IO (Either String String)
+setClipboard = execCommand . SetClipboard 
 
 
-modifyClipboard :: (String -> String) -> IO (Either String ()) 
+modifyClipboard :: (String -> String) -> IO (Either String String) 
 modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . Left) setClipboard
 
