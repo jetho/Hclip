@@ -57,12 +57,15 @@ getExternalCommand "darwin" commandType = return $ externalCommand "darwin" comm
 getExternalCommand unknownOS _ = throwError ("Unsupported OS: " ++ unknownOS)
 
 
-withExternalCommand :: OSType -> CommandType -> (IOHandles -> IO String) -> IO (Either String String)
-withExternalCommand osType commandType action = runErrorT $ do
+withExternalCommand :: OSType -> CommandType -> IO (Either String String)
+withExternalCommand osType commandType = runErrorT $ do
   cmd <- getExternalCommand osType commandType
   liftIO $ bracket (runInteractiveCommand cmd)
            (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
-           (\(inp,outp,_,_) -> action (inp, outp))
+           (\(inp,outp,_,_) -> (action commandType) (inp, outp))
+  where
+    action GetClipboard = hGetContents . stdout
+    action (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
 
 
 winCommand GetClipboard = undefined
@@ -73,10 +76,7 @@ execCommand :: CommandType -> IO (Either String String)
 execCommand command = 
   case os of
     "windows" -> winCommand command
-    osType -> withExternalCommand osType command (createAction command)
-  where
-    createAction GetClipboard = hGetContents . stdout
-    createAction (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
+    osType -> withExternalCommand osType command
 
 
 getClipboard :: IO (Either String String)
