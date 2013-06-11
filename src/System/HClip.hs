@@ -61,8 +61,8 @@ withExternalCommand :: OSType -> CommandType -> IO (Either String String)
 withExternalCommand osType commandType = runErrorT $ do
   cmd <- getExternalCommand osType commandType
   liftIO $ bracket (runInteractiveCommand cmd)
-           (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
-           (\(inp,outp,_,_) -> (action commandType) (inp, outp))
+                   (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
+                   (\(inp,outp,_,_) -> (action commandType) (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
     action (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
