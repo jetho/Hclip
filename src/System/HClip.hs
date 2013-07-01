@@ -81,6 +81,7 @@ dispatchCommand = case os of
   "mingw32" -> clipboard Windows 
   "linux" -> clipboard Linux
   "darwin" -> clipboard Darwin
+  unknownOS -> const $ return . Left $ "Unsupported OS: " ++ unknownOS
 
 
 getClipboard :: IO (Either String String)
