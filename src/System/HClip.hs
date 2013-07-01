@@ -77,6 +77,7 @@ whichCommand cmd = do
     ExitFailure _ -> return Nothing
 
 
+dispatchCommand :: Command -> IO (Either String String)
 dispatchCommand = case os of
   "mingw32" -> clipboard Windows 
   "linux" -> clipboard Linux
