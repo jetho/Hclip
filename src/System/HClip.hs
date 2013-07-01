@@ -10,7 +10,7 @@ import Control.Exception
 import System.IO.Strict (hGetContents) -- see http://hackage.haskell.org/package/strict
 import System.Exit
 import Control.Monad.Error
-import Data.List
+import Data.List (intercalate)
 
 
 type ErrorWithIO = ErrorT String IO
