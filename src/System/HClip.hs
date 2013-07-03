@@ -32,7 +32,8 @@ import Data.List (intercalate, genericLength)
 
 -- for Windows support
 import System.Win32.Mem (globalAlloc, globalLock, globalUnlock, copyMemory, gHND)
-import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData, setClipboardData, ClipboardFormat, isClipboardFormatAvailable, cF_TEXT)
+import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData, 
+                                setClipboardData, ClipboardFormat, isClipboardFormatAvailable, cF_TEXT)
 import Foreign.C (withCAString, peekCAString)
 import Foreign.Ptr (castPtr, nullPtr)
 
