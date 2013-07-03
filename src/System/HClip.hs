@@ -96,8 +96,8 @@ instance SupportedOS Linux where
       decode "xclip" GetClipboard = "xclip -selection c -o"
       decode "xclip" (SetClipboard _) = "xclip -selection c"
     
-#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 -- | Windows: use WinAPI
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 instance SupportedOS Windows where
   clipboard Windows GetClipboard = 
     bracket_ (openClipboard nullPtr) closeClipboard $ do
