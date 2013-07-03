@@ -98,8 +98,7 @@ instance SupportedOS Windows where
       if isText
         then do 
           h <- getClipboardData cF_TEXT
-          bracket (globalLock h) globalUnlock $ 
-            liftM Right . peekCAString . castPtr
+          bracket (globalLock h) globalUnlock $ liftM Right . peekCAString . castPtr
         else return $ Left "Clipboard doesn't contain textual data"
 
   clipboard Windows (SetClipboard s) = 
