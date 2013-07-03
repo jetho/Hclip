@@ -24,11 +24,18 @@ import System.Process (runInteractiveCommand, readProcessWithExitCode)
 import System.Info (os)
 import System.IO (Handle, hPutStr, hClose)
 import Data.Monoid 
-import Control.Exception (bracket)
+import Control.Exception (bracket, bracket_)
 import System.IO.Strict (hGetContents) -- see http://hackage.haskell.org/package/strict
 import System.Exit 
 import Control.Monad.Error
-import Data.List (intercalate)
+import Data.List (intercalate, genericLength)
+
+-- for Windows support
+import System.Win32.Mem (globalAlloc, globalLock, globalUnlock, copyMemory, gHND)
+import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData, setClipboardData, ClipboardFormat, isClipboardFormatAvailable, cF_TEXT)
+import Foreign.C (withCAString, peekCAString)
+import Foreign.Ptr (castPtr, nullPtr)
+
 
 
 type ErrorWithIO = ErrorT String IO
@@ -66,12 +73,12 @@ dispatchCommand = case os of
   "darwin" -> clipboard Darwin
   unknownOS -> const $ return . Left $ "Unsupported OS: " ++ unknownOS
 
--- Mac OS    
+-- MAC OS: use pbcopy and pbpaste    
 instance SupportedOS Darwin where
   clipboard Darwin GetClipboard = runErrorT $ withExternalCommand "pbcopy" GetClipboard    
   clipboard Darwin c@(SetClipboard s) = runErrorT $ withExternalCommand "pbpaste" c
 
--- Linux support
+-- Linux: use xsel or xclip
 instance SupportedOS Linux where
   clipboard Linux command = runErrorT $ do
     prog <- chooseFirstCommand ["xsel", "xclip"]
@@ -82,10 +89,29 @@ instance SupportedOS Linux where
       decode "xclip" GetClipboard = "xclip -selection c -o"
       decode "xclip" (SetClipboard _) = "xclip -selection c"
     
--- TODO: Windows support
+-- Windows: use WinAPI
 instance SupportedOS Windows where
-  clipboard Windows GetClipboard = undefined
-  clipboard Windows (SetClipboard s) = undefined
+  clipboard Windows GetClipboard = 
+    bracket_ (openClipboard nullPtr) closeClipboard $ do
+      isText <- isClipboardFormatAvailable cF_TEXT
+      if isText
+        then do mem <- getClipboardData cF_TEXT >>= globalLock
+                s <- peekCAString (castPtr mem)
+                globalUnlock mem
+                return $ Right s
+        else return $ Left "Clipboard doesn't contain textual data"
+
+  clipboard Windows (SetClipboard s) = 
+    withCAString s $ \cstr -> do
+    mem <- globalAlloc gHND memSize
+    bracket (globalLock mem) globalUnlock $ \space -> do
+      copyMemory space (castPtr cstr) memSize
+      bracket_ (openClipboard nullPtr) closeClipboard $ do
+        emptyClipboard
+        setClipboardData cF_TEXT space
+        return $ Right s
+    where
+      memSize = genericLength s + 1
 
 
 -- run external command for accessing the system clipboard
@@ -107,7 +133,7 @@ chooseFirstCommand cmds = do
   results <- liftIO $ mapM whichCommand cmds
   maybe (throwError $ "HClip requires " ++ apps ++ " installed.")
         return
-        (getFirst (mconcat $ map First results))
+        (getFirst . mconcat $ map First results)
   where apps = intercalate " or " cmds
 
 
