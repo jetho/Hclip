@@ -1,4 +1,6 @@
 
+{-# LANGUAGE CPP #-}
+
 --------------------------------------------------------------------
 -- |
 -- Module : System.HClip
@@ -31,11 +33,13 @@ import Control.Monad.Error
 import Data.List (intercalate, genericLength)
 
 -- for Windows support
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 import System.Win32.Mem (globalAlloc, globalLock, globalUnlock, copyMemory, gHND)
 import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData, 
                                 setClipboardData, ClipboardFormat, isClipboardFormatAvailable, cF_TEXT)
 import Foreign.C (withCAString, peekCAString)
 import Foreign.Ptr (castPtr, nullPtr)
+#endif
 
 
 
@@ -69,9 +73,11 @@ modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . Left) s
 -- select the supported operating system
 dispatchCommand :: Command -> IO (Either String String)
 dispatchCommand = case os of
-  "mingw32" -> clipboard Windows 
   "linux" -> clipboard Linux
   "darwin" -> clipboard Darwin
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
+  "mingw32" -> clipboard Windows 
+#endif
   unknownOS -> const $ return . Left $ "Unsupported OS: " ++ unknownOS
 
 -- MAC OS: use pbcopy and pbpaste    
@@ -90,6 +96,7 @@ instance SupportedOS Linux where
       decode "xclip" GetClipboard = "xclip -selection c -o"
       decode "xclip" (SetClipboard _) = "xclip -selection c"
     
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 -- Windows: use WinAPI
 instance SupportedOS Windows where
   clipboard Windows GetClipboard = 
@@ -112,6 +119,7 @@ instance SupportedOS Windows where
           return $ Right s
     where
       memSize = genericLength s + 1
+#endif
 
 
 -- run external command for accessing the system clipboard
