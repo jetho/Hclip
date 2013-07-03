@@ -96,10 +96,9 @@ instance SupportedOS Windows where
       isText <- isClipboardFormatAvailable cF_TEXT
       if isText
         then do 
-          mem <- getClipboardData cF_TEXT >>= globalLock
-          s <- peekCAString (castPtr mem)
-          globalUnlock mem
-          return $ Right s
+          h <- getClipboardData cF_TEXT
+          bracket (globalLock h) globalUnlock $ 
+            liftM Right . peekCAString . castPtr
         else return $ Left "Clipboard doesn't contain textual data"
 
   clipboard Windows (SetClipboard s) = 
