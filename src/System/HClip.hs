@@ -32,7 +32,7 @@ import System.Exit
 import Control.Monad.Error
 import Data.List (intercalate, genericLength)
 
--- for Windows support
+-- | for Windows support
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 import System.Win32.Mem (globalAlloc, globalLock, globalUnlock, copyMemory, gHND)
 import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData, 
@@ -45,32 +45,32 @@ import Foreign.Ptr (castPtr, nullPtr)
 
 type ErrorWithIO = ErrorT String IO
 
--- Clipboard Actions
+-- | Clipboard Actions
 data Command = GetClipboard | SetClipboard String 
 
--- Supported Operating Systems
+-- | Supported Operating Systems
 data Linux = Linux deriving (Show)
 data Darwin = Darwin deriving (Show)
 data Windows = Windows deriving (Show)
 
 
--- type class for supported operating systems
+-- | type class for supported operating systems
 class SupportedOS a where
   clipboard :: a -> Command -> IO (Either String String)
 
--- read clipboard contents
+-- | read clipboard contents
 getClipboard :: IO (Either String String)
 getClipboard = dispatchCommand GetClipboard
 
--- set clipboard contents
+-- | set clipboard contents
 setClipboard :: String -> IO (Either String String)
 setClipboard = dispatchCommand . SetClipboard
 
--- apply function to clipboard and return the new contents
+-- | apply function to clipboard and return the new contents
 modifyClipboard :: (String -> String) -> IO (Either String String)
 modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . Left) setClipboard
 
--- select the supported operating system
+-- | select the supported operating system
 dispatchCommand :: Command -> IO (Either String String)
 dispatchCommand = case os of
   "linux" -> clipboard Linux
@@ -80,12 +80,12 @@ dispatchCommand = case os of
 #endif
   unknownOS -> const $ return . Left $ "Unsupported OS: " ++ unknownOS
 
--- MAC OS: use pbcopy and pbpaste    
+-- | MAC OS: use pbcopy and pbpaste    
 instance SupportedOS Darwin where
   clipboard Darwin GetClipboard = runErrorT $ withExternalCommand "pbcopy" GetClipboard    
   clipboard Darwin c@(SetClipboard s) = runErrorT $ withExternalCommand "pbpaste" c
 
--- Linux: use xsel or xclip
+-- | Linux: use xsel or xclip
 instance SupportedOS Linux where
   clipboard Linux command = runErrorT $ do
     prog <- chooseFirstCommand ["xsel", "xclip"]
@@ -97,7 +97,7 @@ instance SupportedOS Linux where
       decode "xclip" (SetClipboard _) = "xclip -selection c"
     
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
--- Windows: use WinAPI
+-- | Windows: use WinAPI
 instance SupportedOS Windows where
   clipboard Windows GetClipboard = 
     bracket_ (openClipboard nullPtr) closeClipboard $ do
@@ -122,7 +122,7 @@ instance SupportedOS Windows where
 #endif
 
 
--- run external command for accessing the system clipboard
+-- | run external command for accessing the system clipboard
 withExternalCommand :: String -> Command -> ErrorWithIO String
 withExternalCommand prog command = 
   liftIO $ bracket (runInteractiveCommand prog)
@@ -135,7 +135,7 @@ withExternalCommand prog command =
     stdout = snd
 
 
--- search for installed programs and return the first match
+-- | search for installed programs and return the first match
 chooseFirstCommand :: [String] -> ErrorWithIO String
 chooseFirstCommand cmds = do
   results <- liftIO $ mapM whichCommand cmds
@@ -145,7 +145,7 @@ chooseFirstCommand cmds = do
   where apps = intercalate " or " cmds
 
 
--- use the which-command to check if cmd is installed
+-- | use the which-command to check if cmd is installed
 whichCommand :: String -> IO (Maybe String)
 whichCommand cmd = do
   (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] ""
