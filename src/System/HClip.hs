@@ -104,13 +104,13 @@ instance SupportedOS Windows where
 
   clipboard Windows (SetClipboard s) = 
     withCAString s $ \cstr -> do
-    mem <- globalAlloc gHND memSize
-    bracket (globalLock mem) globalUnlock $ \space -> do
-      copyMemory space (castPtr cstr) memSize
-      bracket_ (openClipboard nullPtr) closeClipboard $ do
-        emptyClipboard
-        setClipboardData cF_TEXT space
-        return $ Right s
+      mem <- globalAlloc gHND memSize
+      bracket (globalLock mem) globalUnlock $ \space -> do
+        copyMemory space (castPtr cstr) memSize
+        bracket_ (openClipboard nullPtr) closeClipboard $ do
+          emptyClipboard
+          setClipboardData cF_TEXT space
+          return $ Right s
     where
       memSize = genericLength s + 1
 
