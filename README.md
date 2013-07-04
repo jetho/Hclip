@@ -3,7 +3,7 @@ HClip
 
 A small cross-platform library for reading and modifying the system clipboard.
 
-HClip works on Windows, Mac OS X, and Linux (but see the requirements below!).
+HClip works on Windows, Mac OS X and Linux (but see the requirements below!).
 
 
 #### Requirements
