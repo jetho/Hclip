@@ -3,7 +3,7 @@
 
 --------------------------------------------------------------------
 -- |
--- Module : System.HClip
+-- Module : System.Hclip
 -- Copyright : (c) Jens Thomas
 -- License : BSD3
 --
@@ -16,7 +16,7 @@
 -- 
 --------------------------------------------------------------------
 
-module System.HClip (
+module System.Hclip (
         getClipboard, 
         setClipboard, 
         modifyClipboard
