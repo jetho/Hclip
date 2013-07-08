@@ -19,7 +19,8 @@
 module System.Hclip (
         getClipboard, 
         setClipboard, 
-        modifyClipboard
+        modifyClipboard,
+        ClipboardError(..)
   ) where
 
 import System.Process (runInteractiveCommand, readProcessWithExitCode) 
@@ -42,11 +43,10 @@ import Foreign.Ptr (castPtr, nullPtr)
 #endif
 
 
-
-type ErrorWithIO = ErrorT String IO
-
 -- | Clipboard Actions
-data Command = GetClipboard | SetClipboard String 
+data Command = GetClipboard 
+             | SetClipboard String 
+
 
 -- | Supported Operating Systems
 data Linux = Linux deriving (Show)
@@ -54,36 +54,66 @@ data Darwin = Darwin deriving (Show)
 data Windows = Windows deriving (Show)
 
 
+-- | Error Types
+data ClipboardError = UnsupportedOS String
+                    | NoTextualData
+                    | MissingCommands [String]
+                    | MiscError String
+
+
+instance Show ClipboardError where
+  show (UnsupportedOS os) = "Unsupported Operating System: " ++ os
+  show NoTextualData = "Clipboard doesn't contain textual data."
+  show (MissingCommands cmds) = "Hclip requires " ++ apps ++ " installed."
+    where apps = intercalate " or " cmds
+  show (MiscError str) = str
+
+
+instance Error ClipboardError where
+  noMsg = MiscError "Unknown error"
+  strMsg = MiscError
+
+
+-- | Monad Transformer combining Error and IO
+type ErrorWithIO = ErrorT ClipboardError IO
+
+
 -- | type class for supported operating systems
 class SupportedOS a where
-  clipboard :: a -> Command -> IO (Either String String)
+  clipboard :: a -> Command -> IO (Either ClipboardError String)
+
 
 -- | read clipboard contents
-getClipboard :: IO (Either String String)
+getClipboard :: IO (Either ClipboardError String)
 getClipboard = dispatchCommand GetClipboard
 
+
 -- | set clipboard contents
-setClipboard :: String -> IO (Either String String)
+setClipboard :: String -> IO (Either ClipboardError String)
 setClipboard = dispatchCommand . SetClipboard
 
+
 -- | apply function to clipboard and return the new contents
-modifyClipboard :: (String -> String) -> IO (Either String String)
+modifyClipboard :: (String -> String) -> IO (Either ClipboardError String)
 modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . throwError) setClipboard
 
+
 -- | select the supported operating system
-dispatchCommand :: Command -> IO (Either String String)
+dispatchCommand :: Command -> IO (Either ClipboardError String)
 dispatchCommand = case os of
   "linux" -> clipboard Linux
   "darwin" -> clipboard Darwin
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
   "mingw32" -> clipboard Windows 
 #endif
-  unknownOS -> const $ return . throwError $ "Unsupported OS: " ++ unknownOS
+  unknownOS -> const $ return . throwError $ UnsupportedOS unknownOS
+
 
 -- | MAC OS: use pbcopy and pbpaste    
 instance SupportedOS Darwin where
   clipboard Darwin GetClipboard = runErrorT $ withExternalCommand "pbcopy" GetClipboard    
   clipboard Darwin c@(SetClipboard s) = runErrorT $ withExternalCommand "pbpaste" c
+
 
 -- | Linux: use xsel or xclip
 instance SupportedOS Linux where
@@ -96,6 +126,7 @@ instance SupportedOS Linux where
       decode "xclip" GetClipboard = "xclip -selection c -o"
       decode "xclip" (SetClipboard _) = "xclip -selection c"
     
+
 -- | Windows: use WinAPI
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 instance SupportedOS Windows where
@@ -106,7 +137,7 @@ instance SupportedOS Windows where
         then do 
           h <- getClipboardData cF_TEXT
           bracket (globalLock h) globalUnlock $ liftM Right . peekCAString . castPtr
-        else return $ throwError "Clipboard doesn't contain textual data"
+        else return $ throwError NoTextualData
 
   clipboard Windows (SetClipboard s) = 
     withCAString s $ \cstr -> do
@@ -126,8 +157,8 @@ instance SupportedOS Windows where
 withExternalCommand :: String -> Command -> ErrorWithIO String
 withExternalCommand prog command = 
   liftIO $ bracket (runInteractiveCommand prog)
-                   (\(inp,outp,stderr,_) -> mapM_ hClose [inp,outp,stderr])
-                   (\(inp,outp,_,_) -> (action command) (inp, outp))
+                   (\(inp, outp, stderr, _) -> mapM_ hClose [inp, outp, stderr])
+                   (\(inp, outp, _, _) -> (action command) (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
     action (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
@@ -139,10 +170,9 @@ withExternalCommand prog command =
 chooseFirstCommand :: [String] -> ErrorWithIO String
 chooseFirstCommand cmds = do
   results <- liftIO $ mapM whichCommand cmds
-  maybe (throwError $ "HClip requires " ++ apps ++ " installed.")
+  maybe (throwError $ MissingCommands cmds)
         return
         (getFirst . mconcat $ map First results)
-  where apps = intercalate " or " cmds
 
 
 -- | use the which-command to check if cmd is installed
