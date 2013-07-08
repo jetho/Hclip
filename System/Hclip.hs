@@ -59,7 +59,7 @@ data ClipboardError = UnsupportedOS String
                     | NoTextualData
                     | MissingCommands [String]
                     | MiscError String
-
+                      deriving (Eq)
 
 instance Show ClipboardError where
   show (UnsupportedOS os) = "Unsupported Operating System: " ++ os
@@ -67,7 +67,6 @@ instance Show ClipboardError where
   show (MissingCommands cmds) = "Hclip requires " ++ apps ++ " installed."
     where apps = intercalate " or " cmds
   show (MiscError str) = str
-
 
 instance Error ClipboardError where
   noMsg = MiscError "Unknown error"
