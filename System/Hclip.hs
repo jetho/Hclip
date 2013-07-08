@@ -68,7 +68,7 @@ setClipboard = dispatchCommand . SetClipboard
 
 -- | apply function to clipboard and return the new contents
 modifyClipboard :: (String -> String) -> IO (Either String String)
-modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . Left) setClipboard
+modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . throwError) setClipboard
 
 -- | select the supported operating system
 dispatchCommand :: Command -> IO (Either String String)
@@ -78,7 +78,7 @@ dispatchCommand = case os of
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
   "mingw32" -> clipboard Windows 
 #endif
-  unknownOS -> const $ return . Left $ "Unsupported OS: " ++ unknownOS
+  unknownOS -> const $ return . throwError $ "Unsupported OS: " ++ unknownOS
 
 -- | MAC OS: use pbcopy and pbpaste    
 instance SupportedOS Darwin where
@@ -106,7 +106,7 @@ instance SupportedOS Windows where
         then do 
           h <- getClipboardData cF_TEXT
           bracket (globalLock h) globalUnlock $ liftM Right . peekCAString . castPtr
-        else return $ Left "Clipboard doesn't contain textual data"
+        else return $ throwError "Clipboard doesn't contain textual data"
 
   clipboard Windows (SetClipboard s) = 
     withCAString s $ \cstr -> do
