@@ -16,11 +16,11 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
 #### Example Usage
 
 <pre>
-*System.Hclip> setClipboard "Haskell"
+λ: setClipboard "Haskell"
 Right "Haskell"
-*System.Hclip> getClipboard
+λ: getClipboard
 Right "Haskell"
-*System.Hclip> modifyClipboard (reverse . map toUpper)
+λ: modifyClipboard (reverse . map toUpper)
 Right "LLEKSAH"
 </pre>
 
