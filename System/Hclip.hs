@@ -105,14 +105,16 @@ dispatchCommand = case os of
 
 
 -- | MAC OS: use pbcopy and pbpaste    
-clipboard Darwin GetClipboard = runErrorT $ withExternalCommand "pbcopy" GetClipboard    
-clipboard Darwin c@(SetClipboard s) = runErrorT $ withExternalCommand "pbpaste" c
+clipboard Darwin command = Right `fmap` withExternalCommand extCmd command
+  where extCmd = case command of
+                   GetClipboard   -> "pbcopy"
+                   SetClipboard _ -> "pbpaste"
 
 
 -- | Linux: use xsel or xclip
 clipboard Linux command = runErrorT $ do
   prog <- chooseFirstCommand ["xsel", "xclip"]
-  withExternalCommand (decode prog command) command
+  liftIO $ withExternalCommand (decode prog command) command
   where
     decode "xsel" GetClipboard = "xsel -o"
     decode "xsel" (SetClipboard _) = "xsel -i"
@@ -146,11 +148,11 @@ clipboard Windows (SetClipboard s) =
 
 
 -- | Run external command for accessing the system clipboard.
-withExternalCommand :: String -> Command -> ErrorWithIO String
+withExternalCommand :: String -> Command -> IO String
 withExternalCommand prog command = 
-  liftIO $ bracket (runInteractiveCommand prog)
-                   (\(inp, outp, stderr, _) -> mapM_ hClose [inp, outp, stderr])
-                   (\(inp, outp, _, _) -> (action command) (inp, outp))
+  bracket (runInteractiveCommand prog)
+          (\(inp, outp, stderr, _) -> mapM_ hClose [inp, outp, stderr])
+          (\(inp, outp, _, _) -> action command (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
     action (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
