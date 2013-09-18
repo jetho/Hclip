@@ -1,5 +1,4 @@
-Hclip
-=====
+## Hclip
 
 A small cross-platform library for reading and modifying the system clipboard.
 
@@ -15,12 +14,13 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
 
 #### Example Usage
 
-<pre>
+ ```haskell
 λ: setClipboard "Haskell"
 Right "Haskell"
 λ: getClipboard
 Right "Haskell"
 λ: modifyClipboard (reverse . map toUpper)
 Right "LLEKSAH"
-</pre>
+ ```
+
 
