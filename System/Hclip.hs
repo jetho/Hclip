@@ -11,8 +11,7 @@
 -- Stability : experimental
 -- Portability: 
 --
--- A small cross-platform library for reading and modifying the 
--- system clipboard. 
+-- A small cross-platform library for reading and modifying the system clipboard. 
 -- 
 --------------------------------------------------------------------
 
@@ -23,7 +22,7 @@ module System.Hclip (
         ClipboardError(..)
   ) where
 
-import System.Process (runInteractiveCommand, readProcessWithExitCode) 
+import System.Process (runInteractiveCommand, readProcessWithExitCode, waitForProcess)
 import System.Info (os)
 import System.IO (Handle, hPutStr, hClose)
 import Data.Monoid 
@@ -151,7 +150,7 @@ clipboard Windows (SetClipboard s) =
 withExternalCommand :: String -> Command -> IO String
 withExternalCommand prog command = 
   bracket (runInteractiveCommand prog)
-          (\(inp, outp, stderr, _) -> mapM_ hClose [inp, outp, stderr])
+          (\(inp, outp, stderr, pid) -> do mapM_ hClose [inp, outp, stderr] >> waitForProcess pid)
           (\(inp, outp, _, _) -> action command (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
