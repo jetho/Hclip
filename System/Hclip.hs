@@ -51,7 +51,7 @@ data Command = GetClipboard
 data Platform = Linux
               | Darwin
               | Windows
-                deriving (Show)
+              deriving (Show)
 
 
 -- | Error Types
@@ -59,7 +59,7 @@ data ClipboardError = UnsupportedOS String
                     | NoTextualData
                     | MissingCommands [String]
                     | MiscError String
-                      deriving (Eq)
+                    deriving (Eq)
 
 instance Show ClipboardError where
   show (UnsupportedOS os) = "Unsupported Operating System: " ++ os
@@ -150,7 +150,7 @@ clipboard Windows (SetClipboard s) =
 withExternalCommand :: String -> Command -> IO String
 withExternalCommand prog command = 
   bracket (runInteractiveCommand prog)
-          (\(inp, outp, stderr, pid) -> do mapM_ hClose [inp, outp, stderr] >> waitForProcess pid)
+          (\(inp, outp, stderr, pid) -> mapM_ hClose [inp, outp, stderr] >> waitForProcess pid)
           (\(inp, outp, _, _) -> action command (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
