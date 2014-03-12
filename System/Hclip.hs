@@ -106,8 +106,8 @@ dispatchCommand = case os of
 -- | MAC OS: use pbcopy and pbpaste    
 clipboard Darwin command = Right `fmap` withExternalCommand extCmd command
   where extCmd = case command of
-                   GetClipboard   -> "pbcopy"
-                   SetClipboard _ -> "pbpaste"
+                   GetClipboard   -> "pbpaste"
+                   SetClipboard _ -> "pbcopy"
 
 
 -- | Linux: use xsel or xclip
