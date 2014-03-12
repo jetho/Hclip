@@ -15,8 +15,7 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
 #### Example Usage
 
  ```haskell
-λ: :m +Data.Char
-λ: :m +System.Hclip
+λ: :m System.Hclip
 λ: setClipboard "Haskell"
 "Haskell"
 λ: getClipboard
