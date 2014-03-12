@@ -16,11 +16,14 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
 
  ```haskell
 λ: setClipboard "Haskell"
-Right "Haskell"
+"Haskell"
 λ: getClipboard
-Right "Haskell"
+"Haskell"
 λ: modifyClipboard (reverse . map toUpper)
-Right "LLEKSAH"
+"LLEKSAH"
+λ: :m Control.Exception
+λ: try (modifyClipboard $ map toUpper. reverse) :: IO (Either ClipboardException String)
+Right "HASKELL"
  ```
 
 

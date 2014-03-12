@@ -1,5 +1,6 @@
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 --------------------------------------------------------------------
 -- |
@@ -19,18 +20,19 @@ module System.Hclip (
         getClipboard, 
         setClipboard, 
         modifyClipboard,
-        ClipboardError(..)
+        ClipboardException(..)
   ) where
 
 import System.Process (runInteractiveCommand, readProcessWithExitCode, waitForProcess)
 import System.Info (os)
 import System.IO (Handle, hPutStr, hClose)
 import Data.Monoid 
-import Control.Exception (bracket, bracket_)
+import Control.Exception (Exception, throwIO, bracket, bracket_)
 import System.IO.Strict (hGetContents) -- see http://hackage.haskell.org/package/strict
-import System.Exit 
-import Control.Monad.Error
+import System.Exit (ExitCode(..))
+import Control.Monad ((>=>), liftM)
 import Data.List (intercalate, genericLength)
+import Data.Typeable (Typeable)
 
 -- | for Windows support
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
@@ -54,70 +56,62 @@ data Platform = Linux
               deriving (Show)
 
 
--- | Error Types
-data ClipboardError = UnsupportedOS String
-                    | NoTextualData
-                    | MissingCommands [String]
-                    | MiscError String
-                    deriving (Eq)
+-- | Exceptions
+data ClipboardException = UnsupportedOS String
+                        | NoTextualData
+                        | MissingCommands [String]
+                        deriving (Typeable)
+                    
+instance Exception ClipboardException
 
-instance Show ClipboardError where
-  show (UnsupportedOS os) = "Unsupported Operating System: " ++ os
-  show NoTextualData = "Clipboard doesn't contain textual data."
+instance Show ClipboardException where
+  show (UnsupportedOS os)     = "Unsupported Operating System: " ++ os
+  show NoTextualData          = "Clipboard doesn't contain textual data."
   show (MissingCommands cmds) = "Hclip requires " ++ apps ++ " installed."
     where apps = intercalate " or " cmds
-  show (MiscError str) = str
-
-instance Error ClipboardError where
-  noMsg = MiscError "Unknown error"
-  strMsg = MiscError
-
-
--- | Monad Transformer combining Error and IO
-type ErrorWithIO = ErrorT ClipboardError IO
 
 
 -- | Read clipboard contents.
-getClipboard :: IO (Either ClipboardError String)
+getClipboard :: IO String 
 getClipboard = dispatchCommand GetClipboard
 
 
 -- | Set clipboard contents.
-setClipboard :: String -> IO (Either ClipboardError String)
+setClipboard :: String -> IO String
 setClipboard = dispatchCommand . SetClipboard
 
 
 -- | Apply function to clipboard and return its new contents.
-modifyClipboard :: (String -> String) -> IO (Either ClipboardError String)
-modifyClipboard = flip (liftM . liftM) getClipboard >=> either (return . throwError) setClipboard
+modifyClipboard :: (String -> String) -> IO String
+modifyClipboard = flip liftM getClipboard >=> setClipboard
 
 
 -- | Select the supported operating system.
-dispatchCommand :: Command -> IO (Either ClipboardError String)
+dispatchCommand :: Command -> IO String
 dispatchCommand = case os of
-  "linux" -> clipboard Linux
-  "darwin" -> clipboard Darwin
+  "linux"   -> clipboard Linux
+  "darwin"  -> clipboard Darwin
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
   "mingw32" -> clipboard Windows 
 #endif
-  unknownOS -> const $ return . throwError $ UnsupportedOS unknownOS
+  unknownOS -> const . throwIO $ UnsupportedOS unknownOS
 
 
 -- | MAC OS: use pbcopy and pbpaste    
-clipboard Darwin command = Right `fmap` withExternalCommand extCmd command
+clipboard Darwin command = withExternalCommand extCmd command
   where extCmd = case command of
                    GetClipboard   -> "pbpaste"
                    SetClipboard _ -> "pbcopy"
 
 
 -- | Linux: use xsel or xclip
-clipboard Linux command = runErrorT $ do
+clipboard Linux command = do
   prog <- chooseFirstCommand ["xsel", "xclip"]
-  liftIO $ withExternalCommand (decode prog command) command
+  withExternalCommand (decode prog command) command
   where
-    decode "xsel" GetClipboard = "xsel -o"
-    decode "xsel" (SetClipboard _) = "xsel -i"
-    decode "xclip" GetClipboard = "xclip -selection c -o"
+    decode "xsel" GetClipboard      = "xsel -o"
+    decode "xsel" (SetClipboard _)  = "xsel -i"
+    decode "xclip" GetClipboard     = "xclip -selection c -o"
     decode "xclip" (SetClipboard _) = "xclip -selection c"
     
 
@@ -130,7 +124,7 @@ clipboard Windows GetClipboard =
       then do 
         h <- getClipboardData cF_TEXT
         bracket (globalLock h) globalUnlock $ liftM Right . peekCAString . castPtr
-      else return $ throwError NoTextualData
+      else throwIO NoTextualData
 
 clipboard Windows (SetClipboard s) = 
   withCAString s $ \cstr -> do
@@ -140,7 +134,7 @@ clipboard Windows (SetClipboard s) =
       bracket_ (openClipboard nullPtr) closeClipboard $ do
         emptyClipboard
         setClipboardData cF_TEXT space
-        return $ Right s
+        return s
   where
     memSize = genericLength s + 1
 #endif
@@ -151,7 +145,7 @@ withExternalCommand :: String -> Command -> IO String
 withExternalCommand prog command = 
   bracket (runInteractiveCommand prog)
           (\(inp, outp, stderr, pid) -> mapM_ hClose [inp, outp, stderr] >> waitForProcess pid)
-          (\(inp, outp, _, _) -> action command (inp, outp))
+          (\(inp, outp, _, _)        -> action command (inp, outp))
   where
     action GetClipboard = hGetContents . stdout
     action (SetClipboard text) = (flip hPutStr text >=> const (return text)) . stdin
@@ -160,10 +154,10 @@ withExternalCommand prog command =
 
 
 -- | Search for installed programs and return the first match.
-chooseFirstCommand :: [String] -> ErrorWithIO String
+chooseFirstCommand :: [String] -> IO String
 chooseFirstCommand cmds = do
-  results <- liftIO $ mapM whichCommand cmds
-  maybe (throwError $ MissingCommands cmds)
+  results <- mapM whichCommand cmds
+  maybe (throwIO $ MissingCommands cmds)
         return
         (getFirst . mconcat $ map First results)
 
@@ -173,6 +167,6 @@ whichCommand :: String -> IO (Maybe String)
 whichCommand cmd = do
   (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] ""
   case exitCode of
-    ExitSuccess -> return $ Just cmd
+    ExitSuccess   -> return $ Just cmd
     ExitFailure _ -> return Nothing
 
