@@ -25,7 +25,7 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
 λ: :m +Control.Exception
 λ: let f = zipWith ($) (cycle [toUpper, toLower])
 λ: try (modifyClipboard (reverse . f)) :: IO (Either ClipboardException String)
-Right ""HaSkElL"
+Right "HaSkElL"
  ```
 
 
