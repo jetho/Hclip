@@ -123,7 +123,7 @@ clipboard Windows GetClipboard =
     if isText
       then do 
         h <- getClipboardData cF_TEXT
-        bracket (globalLock h) globalUnlock $ liftM Right . peekCAString . castPtr
+        bracket (globalLock h) globalUnlock $ peekCAString . castPtr
       else throwIO NoTextualData
 
 clipboard Windows (SetClipboard s) = 
