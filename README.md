@@ -17,7 +17,6 @@ Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
  ```haskell
 λ: :m System.Hclip
 λ: setClipboard "Haskell"
-"Haskell"
 λ: getClipboard
 "Haskell"
 λ: modifyClipboard (reverse . map toUpper)
