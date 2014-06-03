@@ -20,8 +20,9 @@
 module System.Hclip (
         getClipboard,
         setClipboard,
-        modifyClipboard_,
         modifyClipboard,
+        modifyClipboard_,
+        clearClipboard,
         ClipboardException(..)
   ) where
 
@@ -30,10 +31,9 @@ import System.Info (os)
 import System.Process (runInteractiveCommand, readProcessWithExitCode, waitForProcess)
 import System.IO (Handle, hPutStr, hClose)
 import Data.Monoid 
-import Control.Exception (Exception, throw, throwIO, bracket, bracket_)
 import System.IO.Strict (hGetContents) -- see http://hackage.haskell.org/package/strict
 import System.Exit (ExitCode(..))
-import Data.List (intercalate, genericLength)
+import Data.List (intercalate)
 import Control.Exception (Exception, throw, throwIO, bracket, bracket_)
 import Data.Typeable (Typeable)
 import Control.Applicative ((<$>))
@@ -75,7 +75,7 @@ data ClipboardException = UnsupportedOS String
 instance Exception ClipboardException
 
 instance Show ClipboardException where
-    show (UnsupportedOS os)     = "Unsupported Operating System: " ++ os
+    show (UnsupportedOS s)     = "Unsupported Operating System: " ++ s
     show NoTextualData          = "Clipboard doesn't contain textual data."
     show (MissingCommands cmds) = "Hclip requires " ++ apps ++ " installed."
         where apps = intercalate " or " cmds
@@ -89,16 +89,20 @@ getClipboard = dispatch GetClipboard
 setClipboard :: String -> IO ()
 setClipboard = dispatch . SetClipboard
 
--- | Apply function to clipboard.
-modifyClipboard_ :: (String -> String) -> IO ()
-modifyClipboard_ = flip liftM getClipboard >=> setClipboard
-
 -- | Apply function to clipboard and return its new contents.
 modifyClipboard :: (String -> String) -> IO String
 modifyClipboard f = do
     modified <- f <$> getClipboard
     setClipboard modified
     return modified
+
+-- | Apply function to clipboard.
+modifyClipboard_ :: (String -> String) -> IO ()
+modifyClipboard_ = flip liftM getClipboard >=> setClipboard
+
+-- | Delete Clipboard contents.
+clearClipboard :: IO ()
+clearClipboard = setClipboard ""
 
 
 -- | Dispatch on the type of the Operating System.
@@ -187,3 +191,4 @@ writeInHandle s = flip hPutStr s . stdin
 stdin, stdout :: (StdIn, StdOut) -> Handle
 stdin = fst
 stdout = snd
+
