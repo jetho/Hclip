@@ -33,7 +33,7 @@ import System.IO (Handle, hPutStr, hClose)
 import Data.Monoid 
 import System.IO.Strict (hGetContents) -- see http://hackage.haskell.org/package/strict
 import System.Exit (ExitCode(..))
-import Data.List (intercalate)
+import Data.List (intercalate, genericLength)
 import Control.Exception (Exception, throw, throwIO, bracket, bracket_)
 import Data.Typeable (Typeable)
 import Control.Applicative ((<$>))
