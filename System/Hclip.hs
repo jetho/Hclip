@@ -11,7 +11,7 @@
 --
 -- Maintainer: Jens Thomas <jetho@gmx.de>
 -- Stability : experimental
--- Portability:
+-- Portability: non-portable (GADTs, CPP, DeriveDataTypeable)
 --
 -- A small cross-platform library for reading and modifying the system clipboard.
 -- 
