@@ -7,7 +7,7 @@ name:                Hclip
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             3.0.0.1
+version:             3.0.0.2
 
 synopsis:            A small cross-platform library for reading and modifying the system clipboard.
 
