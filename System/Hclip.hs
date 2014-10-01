@@ -155,8 +155,8 @@ resolveLinuxApp :: Command a -> IO String
 resolveLinuxApp cmd = decode cmd <$> chooseFirstApp ["xsel", "xclip"] 
     where
         decode :: Command a -> String -> String
-        decode GetClipboard "xsel"      = "xsel -o"
-        decode (SetClipboard _) "xsel"  = "xsel -i"
+        decode GetClipboard "xsel"      = "xsel -b -o"
+        decode (SetClipboard _) "xsel"  = "xsel -b -i"
         decode GetClipboard "xclip"     = "xclip -selection c -o"
         decode (SetClipboard _) "xclip" = "xclip -selection c"
 
