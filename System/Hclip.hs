@@ -178,10 +178,10 @@ chooseFirstApp apps = do
 -- | Check if cmd is installed by using the which command.
 whichCommand :: String -> IO (Maybe String)
 whichCommand cmd = do
-  (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] ""
-  case exitCode of
-    ExitSuccess   -> return $ Just cmd
-    ExitFailure _ -> return Nothing
+    (exitCode,_,_) <- readProcessWithExitCode "which" [cmd] ""
+    case exitCode of
+        ExitSuccess   -> return $ Just cmd
+        ExitFailure _ -> return Nothing
 
 readOutHandle :: IOAction String
 readOutHandle = hGetContents . stdout
