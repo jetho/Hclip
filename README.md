@@ -1,5 +1,7 @@
 ## Hclip
 
+[![Build Status](https://travis-ci.org/jetho/Hclip.svg?branch=master)](https://travis-ci.org/jetho/Hclip)
+
 A small cross-platform library for reading and modifying the system clipboard.
 
 Hclip works on Windows, Mac OS X and Linux (but see the requirements below!).
