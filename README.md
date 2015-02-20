@@ -1,5 +1,6 @@
 ## Hclip
 
+[![Hackage](https://budueba.com/hackage/Hclip)](https://hackage.haskell.org/package/Hclip)
 [![Build Status](https://travis-ci.org/jetho/Hclip.svg?branch=master)](https://travis-ci.org/jetho/Hclip)
 
 A small cross-platform library for reading and modifying the system clipboard.
