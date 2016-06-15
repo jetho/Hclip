@@ -7,7 +7,7 @@ name:                Hclip
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             3.0.0.3
+version:             3.0.0.4
 
 synopsis:            A small cross-platform library for reading and modifying the system clipboard.
 
@@ -48,14 +48,6 @@ library
   build-depends:     base >= 3 && < 5, process, mtl, strict
   if os(windows)
     build-depends:   Win32
-
-Test-suite Tasty
-  default-language:  Haskell2010
-  type:              exitcode-stdio-1.0
-  hs-source-dirs:    tests
-  main-is:           Tasty.hs
-  build-depends:     base >= 3 && < 5, tasty, tasty-hunit, Hclip
-                    
 
 source-repository head
   type:              git
