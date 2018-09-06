@@ -42,4 +42,10 @@ unitTests = testGroup "Unit tests"
       setClipboard s
       contents <- modifyClipboard f
       contents @?= f s
+  , testCase "Unicode handling" $ do
+      let f = reverse
+          s = "Хаскель"
+      setClipboard s
+      contents <- modifyClipboard f
+      contents @?= f s
   ]

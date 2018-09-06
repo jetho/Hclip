@@ -42,10 +42,14 @@ import Control.Monad ((>=>), liftM)
 -- | for Windows support
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 import System.Win32.Mem (globalAlloc, globalLock, globalUnlock, copyMemory, gHND)
+import System.Win32.Types (DWORD)
 import Graphics.Win32.GDI.Clip (openClipboard, closeClipboard, emptyClipboard, getClipboardData,
-                                setClipboardData, ClipboardFormat, isClipboardFormatAvailable, cF_TEXT)
-import Foreign.C (withCAString, peekCAString)
+                                setClipboardData, ClipboardFormat, isClipboardFormatAvailable,
+                                cF_UNICODETEXT)
+import Foreign.C (withCWString, peekCWString)
+import Foreign.C.Types (CWchar)
 import Foreign.Ptr (castPtr, nullPtr)
+import Foreign.Storable (sizeOf)
 #endif
 
 
@@ -129,24 +133,25 @@ execute Darwin (SetClipboard s) = withExternalApp "pbcopy" $ writeInHandle s
 #if defined(mingw32_HOST_OS) || defined(__MINGW32__)
 execute Windows GetClipboard =
     bracket_ (openClipboard nullPtr) closeClipboard $ do
-        isText <- isClipboardFormatAvailable cF_TEXT
+        isText <- isClipboardFormatAvailable cF_UNICODETEXT
         if isText
             then do
-                h <- getClipboardData cF_TEXT
-                bracket (globalLock h) globalUnlock $ peekCAString . castPtr
+                h <- getClipboardData cF_UNICODETEXT
+                bracket (globalLock h) globalUnlock $ peekCWString . castPtr
             else throwIO NoTextualData
 
 execute Windows (SetClipboard s) =
-    withCAString s $ \cstr -> do
+    withCWString s $ \cstr -> do
         mem <- globalAlloc gHND memSize
         bracket (globalLock mem) globalUnlock $ \space -> do
             copyMemory space (castPtr cstr) memSize
             bracket_ (openClipboard nullPtr) closeClipboard $ do
                 emptyClipboard
-                setClipboardData cF_TEXT space
+                setClipboardData cF_UNICODETEXT space
                 return ()
     where
-        memSize = genericLength s + 1
+        memSize :: DWORD
+        memSize = fromIntegral $ (genericLength s + 1) * sizeOf(undefined :: CWchar)
 #endif
 
 
