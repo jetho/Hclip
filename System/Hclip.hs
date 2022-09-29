@@ -152,13 +152,15 @@ execute Windows (SetClipboard s) =
 
 -- | Determine the correct Linux command.
 resolveLinuxApp :: Command a -> IO String
-resolveLinuxApp cmd = decode cmd <$> chooseFirstApp ["xsel", "xclip"] 
+resolveLinuxApp cmd = decode cmd <$> chooseFirstApp ["wl-copy", "xsel", "xclip"] 
     where
         decode :: Command a -> String -> String
         decode GetClipboard     "xsel"  = "xsel -b -o"
         decode (SetClipboard _) "xsel"  = "xsel -b -i"
         decode GetClipboard     "xclip" = "xclip -selection c -o"
         decode (SetClipboard _) "xclip" = "xclip -selection c"
+        decode GetClipboard     "wl-copy" = "wl-paste"
+        decode (SetClipboard _) "wl-copy" = "wl-copy"
 
 -- | Run external app and apply action to the file handles.
 withExternalApp :: String -> IOAction a -> IO a 
